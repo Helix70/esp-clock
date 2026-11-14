@@ -1,0 +1,76 @@
+menu "ESP Clock Configuration"
+
+    choice ESPCLOCK_LOG_CHANNEL
+        prompt "Log output channel"
+        default ESPCLOCK_LOG_USB_CDC
+        help
+            Select the hardware interface used for log output.
+
+        config ESPCLOCK_LOG_USB_CDC
+            bool "USB CDC (USB Serial JTAG)"
+        config ESPCLOCK_LOG_UART
+            bool "UART0"
+    endchoice
+
+    config ESPCLOCK_PIN_HOURS_DIN
+        int "Hours driver DIN GPIO"
+        default 24
+        help
+            GPIO pin connected to the hours AiP33628 DIN line.
+
+    config ESPCLOCK_PIN_HOURS_CLK
+        int "Hours driver CLK GPIO"
+        default 23
+        help
+            GPIO pin connected to the hours AiP33628 CLK line.
+
+    config ESPCLOCK_PIN_MINUTES_DIN
+        int "Minutes driver DIN GPIO"
+        default 8
+        help
+            GPIO pin connected to the minutes AiP33628 DIN line.
+            Note: GPIO15 is not bonded out on the ESP32-C5-WROOM-1 module.
+
+    config ESPCLOCK_PIN_MINUTES_CLK
+        int "Minutes driver CLK GPIO"
+        default 9
+        help
+            GPIO pin connected to the minutes AiP33628 CLK line.
+            Note: GPIO27 drives the on-board WS2812 on Waveshare/Espressif kits.
+
+    config ESPCLOCK_PIN_BUTTON1
+        int "Button 1 GPIO"
+        default 10
+        help
+            GPIO pin for button 1 (mode switch). Active low with internal pull-up.
+
+    config ESPCLOCK_PIN_BUTTON2
+        int "Button 2 GPIO"
+        default 26
+        help
+            GPIO pin for button 2. Active low with internal pull-up.
+
+    config ESPCLOCK_PIN_NTC_ADC
+        int "NTC thermistor ADC GPIO"
+        default 1
+        help
+            GPIO pin connected to the NTC voltage divider midpoint
+            (10K pull-up to VCC, NTC to GND). Must be an ADC-capable pin
+            (GPIO1-GPIO6 on ESP32-C5).
+
+    config ESPCLOCK_PIN_LDR_ADC
+        int "LDR light sensor ADC GPIO"
+        default 3
+        help
+            GPIO pin connected to the LDR voltage divider midpoint
+            (10K pull-up to VCC, LDR to GND). Must be an ADC-capable pin
+            (GPIO1-GPIO6 on ESP32-C5). Avoid GPIO6 on the Waveshare kit
+            (wired to the battery divider) and GPIO4/5 (on-board pull-ups).
+
+    config ESPCLOCK_PIN_STATUS_LED
+        int "Status LED (WS2812) GPIO"
+        default 27
+        help
+            GPIO pin driving the on-board addressable RGB status LED.
+
+endmenu
