@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "portal_internal.h"
+#include "settings_form.h"
 
 static const char *TAG = "httpd";
 
@@ -12,52 +13,16 @@ static httpd_handle_t s_server;
 static clock_settings_t *s_settings;
 static volatile bool s_submitted;
 
-static void url_decode(char *dst, const char *src, size_t dst_size)
-{
-    size_t di = 0;
-    for (size_t si = 0; src[si] && di < dst_size - 1; si++) {
-        if (src[si] == '+') {
-            dst[di++] = ' ';
-        } else if (src[si] == '%' && src[si + 1] && src[si + 2]) {
-            char hex[3] = { src[si + 1], src[si + 2], 0 };
-            dst[di++] = (char)strtol(hex, NULL, 16);
-            si += 2;
-        } else {
-            dst[di++] = src[si];
-        }
-    }
-    dst[di] = '\0';
-}
-
-static bool get_form_value(const char *body, const char *key,
-                           char *val, size_t val_size)
-{
-    size_t klen = strlen(key);
-    const char *p = body;
-    while ((p = strstr(p, key)) != NULL) {
-        if ((p == body || *(p - 1) == '&') && p[klen] == '=') {
-            p += klen + 1;
-            const char *end = strchr(p, '&');
-            size_t len = end ? (size_t)(end - p) : strlen(p);
-            if (len >= val_size) len = val_size - 1;
-            char encoded[256];
-            if (len >= sizeof(encoded)) len = sizeof(encoded) - 1;
-            memcpy(encoded, p, len);
-            encoded[len] = '\0';
-            url_decode(val, encoded, val_size);
-            return true;
-        }
-        p += klen;
-    }
-    return false;
-}
-
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
-    const char *page = portal_html_get_page(s_settings);
+    char *page = settings_form_page(s_settings, SETTINGS_FORM_SETUP, false);
+    if (!page) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, page, strlen(page));
-    portal_html_free_page(page);
+    free(page);
     return ESP_OK;
 }
 
@@ -109,49 +74,15 @@ static esp_err_t captive_redirect_handler(httpd_req_t *req)
 
 static esp_err_t save_post_handler(httpd_req_t *req)
 {
-    char *body = malloc(req->content_len + 1);
-    if (!body) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
+    char *body = settings_form_recv(req);
+    if (!body) return ESP_FAIL;
 
-    int received = httpd_req_recv(req, body, req->content_len);
-    if (received <= 0) {
-        free(body);
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-    body[received] = '\0';
-
-    char val[16];
-
-    get_form_value(body, "ssid", s_settings->wifi_ssid,
-                   sizeof(s_settings->wifi_ssid));
-
-    get_form_value(body, "pass", s_settings->wifi_pass,
-                   sizeof(s_settings->wifi_pass));
-
-    get_form_value(body, "ntp", s_settings->ntp_server,
-                   sizeof(s_settings->ntp_server));
-
-    get_form_value(body, "tz", s_settings->tz, sizeof(s_settings->tz));
-
-    if (get_form_value(body, "brightness", val, sizeof(val)))
-        s_settings->brightness = (uint8_t)atoi(val);
-
-    s_settings->fahrenheit = get_form_value(body, "fahrenheit", val, sizeof(val));
-    s_settings->time_24h = get_form_value(body, "time_24h", val, sizeof(val));
-    s_settings->blink_separator = get_form_value(body, "blink_sep", val, sizeof(val));
-    s_settings->led_r = get_form_value(body, "led_r", val, sizeof(val));
-    s_settings->led_g = get_form_value(body, "led_g", val, sizeof(val));
-    s_settings->led_b = get_form_value(body, "led_b", val, sizeof(val));
-
-    if (get_form_value(body, "temp_offset", val, sizeof(val)))
-        s_settings->temp_offset_tenths = (int8_t)atoi(val);
-
+    clock_settings_t *s = s_settings;
+    settings_form_parse(body, s, SETTINGS_FORM_SETUP);
     free(body);
 
-    clock_settings_save(s_settings);
+    clock_settings_sanitize(s);
+    clock_settings_save(s);
     s_submitted = true;
 
     ESP_LOGI(TAG, "Settings saved via portal");

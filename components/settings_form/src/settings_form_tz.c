@@ -1,11 +1,11 @@
-#include "portal_internal.h"
+#include "settings_form.h"
 #include <stddef.h>
 
 /*
  * Common zones as POSIX TZ strings so newlib handles daylight saving.
  * Sign convention is inverted from the usual notation: UTC+10 is "UTC-10".
  */
-static const portal_tz_t TZ_TABLE[] = {
+static const settings_form_tz_t TZ_TABLE[] = {
     { "UTC",                       "UTC0" },
     { "London, Dublin, Lisbon",    "GMT0BST,M3.5.0/1,M10.5.0" },
     { "Berlin, Paris, Madrid, Rome", "CET-1CEST,M3.5.0,M10.5.0/3" },
@@ -45,7 +45,7 @@ static const portal_tz_t TZ_TABLE[] = {
     { "Nairobi",                   "EAT-3" },
 };
 
-const portal_tz_t *portal_tz_table(size_t *count)
+const settings_form_tz_t *settings_form_tz_table(size_t *count)
 {
     *count = sizeof(TZ_TABLE) / sizeof(TZ_TABLE[0]);
     return TZ_TABLE;
