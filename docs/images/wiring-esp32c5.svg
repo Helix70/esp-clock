@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 942" width="1000" height="942" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14">
+  <rect width="1000" height="942" fill="#ffffff"/>
+  <text x="500" y="34" text-anchor="middle" font-size="20" font-weight="bold" fill="#111">HU-058 MCU socket U4 → Waveshare ESP32-C5-WIFI6-KIT</text>
+  <text x="500" y="56" text-anchor="middle" fill="#555">STC8G1K17 removed. HU-058 / HU-058SE (DS1302 RTC). Firmware defaults from main/Kconfig.projbuild.</text>
+  <rect x="30" y="72" width="300" height="588" rx="8" fill="#f4f6fa" stroke="#334" stroke-width="1.5"/>
+  <text x="180" y="92" text-anchor="middle" font-weight="bold" fill="#111">HU-058 socket U4 (DIP-16)</text>
+  <rect x="670" y="72" width="300" height="688" rx="8" fill="#f4f6fa" stroke="#334" stroke-width="1.5"/>
+  <text x="820" y="92" text-anchor="middle" font-weight="bold" fill="#111">ESP32-C5 kit headers</text>
+  <text x="44" y="115" fill="#111"><tspan font-weight="bold">1</tspan>  CLK_1 · driver 2 clock</text>
+  <text x="44" y="155" fill="#111"><tspan font-weight="bold">2</tspan>  DATA_1 · driver 2 data</text>
+  <text x="44" y="195" fill="#111"><tspan font-weight="bold">3</tspan>  R_T · NTC divider</text>
+  <text x="44" y="235" fill="#111"><tspan font-weight="bold">4</tspan>  R_P · LDR divider</text>
+  <text x="44" y="275" fill="#111"><tspan font-weight="bold">5</tspan>  DATA · driver 1 data</text>
+  <text x="44" y="315" fill="#111"><tspan font-weight="bold">6</tspan>  +5V</text>
+  <text x="44" y="355" fill="#111"><tspan font-weight="bold">8</tspan>  GND</text>
+  <text x="44" y="395" fill="#111"><tspan font-weight="bold">9</tspan>  S1 · button 1 (top)</text>
+  <text x="44" y="435" fill="#111"><tspan font-weight="bold">10</tspan>  S2 · button 2 (bottom)</text>
+  <text x="44" y="475" fill="#111"><tspan font-weight="bold">11</tspan>  R_B · buzzer (via Q1)</text>
+  <text x="44" y="515" fill="#111"><tspan font-weight="bold">12</tspan>  DS1302 SCLK</text>
+  <text x="44" y="555" fill="#111"><tspan font-weight="bold">13</tspan>  DS1302 I/O</text>
+  <text x="44" y="595" fill="#111"><tspan font-weight="bold">14</tspan>  DS1302 CE (RST)</text>
+  <text x="44" y="635" fill="#111"><tspan font-weight="bold">16</tspan>  CLK · driver 1 clock *</text>
+  <text x="684" y="135" fill="#111"><tspan font-weight="bold">P1-1</tspan>  3V3</text>
+  <text x="684" y="175" fill="#111"><tspan font-weight="bold">P1-3</tspan>  GPIO2 · NTC supply</text>
+  <text x="684" y="215" fill="#111"><tspan font-weight="bold">P1-4</tspan>  GPIO3 · LDR ADC</text>
+  <text x="684" y="255" fill="#111"><tspan font-weight="bold">P1-5</tspan>  GPIO0 · RTC CE</text>
+  <text x="684" y="295" fill="#111"><tspan font-weight="bold">P1-6</tspan>  GPIO1 · NTC ADC</text>
+  <text x="684" y="335" fill="#111"><tspan font-weight="bold">P1-7</tspan>  GPIO6 · buzzer</text>
+  <text x="684" y="375" fill="#111"><tspan font-weight="bold">P1-9</tspan>  GPIO8 · minutes DIN</text>
+  <text x="684" y="415" fill="#111"><tspan font-weight="bold">P1-10</tspan>  GPIO9 · minutes CLK</text>
+  <text x="684" y="455" fill="#111"><tspan font-weight="bold">P1-11</tspan>  GPIO10 · button 1</text>
+  <text x="684" y="495" fill="#111"><tspan font-weight="bold">P1-12</tspan>  GPIO26 · button 2</text>
+  <text x="684" y="535" fill="#111"><tspan font-weight="bold">P1-14</tspan>  5V</text>
+  <text x="684" y="575" fill="#111"><tspan font-weight="bold">P1-15</tspan>  GND</text>
+  <text x="684" y="615" fill="#111"><tspan font-weight="bold">P2-4</tspan>  GPIO24 · hours DIN</text>
+  <text x="684" y="655" fill="#111"><tspan font-weight="bold">P2-5</tspan>  GPIO23 · hours CLK</text>
+  <text x="684" y="695" fill="#111"><tspan font-weight="bold">P2-8</tspan>  GPIO4 · RTC SCLK</text>
+  <text x="684" y="735" fill="#111"><tspan font-weight="bold">P2-9</tspan>  GPIO5 · RTC I/O</text>
+  <g fill="none" stroke-width="3" stroke-linejoin="round">
+    <polyline points="330,110 365,110 365,410 670,410" stroke="#6a3fc4"/>
+    <polyline points="330,150 381,150 381,370 670,370" stroke="#2f7de1"/>
+    <polyline points="330,190 397,190 397,290 670,290" stroke="#e07b00"/>
+    <polyline points="330,230 413,230 413,210 670,210" stroke="#c99a00"/>
+    <polyline points="330,270 429,270 429,610 670,610" stroke="#1aa0b8"/>
+    <polyline points="330,310 445,310 445,530 670,530" stroke="#d62828"/>
+    <polyline points="330,350 461,350 461,570 670,570" stroke="#222222"/>
+    <polyline points="330,390 477,390 477,450 670,450" stroke="#2a9d3a"/>
+    <polyline points="330,430 493,430 493,490 670,490" stroke="#7cb342"/>
+    <polyline points="330,470 509,470 509,330 670,330" stroke="#b5179e"/>
+    <polyline points="330,510 525,510 525,690 670,690" stroke="#5c6bc0"/>
+    <polyline points="330,550 541,550 541,730 670,730" stroke="#00897b"/>
+    <polyline points="330,590 557,590 557,250 670,250" stroke="#8d6e63"/>
+    <polyline points="330,630 573,630 573,650 670,650" stroke="#8e44ad"/>
+  </g>
+  <rect x="602" y="319" width="44" height="22" rx="3" fill="#fff7d6" stroke="#8a6d00" stroke-width="1.5"/>
+  <text x="624" y="334" text-anchor="middle" font-size="11" font-weight="bold" fill="#8a6d00">NPN</text>
+  <g stroke="#d62828" stroke-width="2.5" fill="none">
+    <polyline points="670,130 600,130 600,140"/>
+    <line x1="600" y1="200" x2="600" y2="210"/>
+    <polyline points="670,170 625,170 625,258"/>
+    <line x1="625" y1="278" x2="625" y2="290"/>
+  </g>
+  <rect x="593" y="140" width="14" height="60" fill="#fff" stroke="#111" stroke-width="1.5"/>
+  <rect x="618" y="258" width="14" height="20" fill="#fff" stroke="#111" stroke-width="1.5"/>
+  <text x="572" y="154" font-size="10" fill="#111">10K</text>
+  <text x="636" y="272" font-size="10" fill="#111">10K</text>
+  <g fill="#111">
+    <circle cx="600" cy="210" r="4"/><circle cx="625" cy="290" r="4"/>
+  </g>
+  <g fill="#111">
+    <circle cx="330" cy="110" r="5"/><circle cx="330" cy="150" r="5"/><circle cx="330" cy="190" r="5"/><circle cx="330" cy="230" r="5"/><circle cx="330" cy="270" r="5"/><circle cx="330" cy="310" r="5"/><circle cx="330" cy="350" r="5"/><circle cx="330" cy="390" r="5"/><circle cx="330" cy="430" r="5"/><circle cx="330" cy="470" r="5"/><circle cx="330" cy="510" r="5"/><circle cx="330" cy="550" r="5"/><circle cx="330" cy="590" r="5"/><circle cx="330" cy="630" r="5"/>
+    <circle cx="670" cy="130" r="5"/><circle cx="670" cy="170" r="5"/><circle cx="670" cy="210" r="5"/><circle cx="670" cy="250" r="5"/><circle cx="670" cy="290" r="5"/><circle cx="670" cy="330" r="5"/><circle cx="670" cy="370" r="5"/><circle cx="670" cy="410" r="5"/><circle cx="670" cy="450" r="5"/><circle cx="670" cy="490" r="5"/><circle cx="670" cy="530" r="5"/><circle cx="670" cy="570" r="5"/><circle cx="670" cy="610" r="5"/><circle cx="670" cy="650" r="5"/><circle cx="670" cy="690" r="5"/><circle cx="670" cy="730" r="5"/>
+  </g>
+  <g fill="#333" font-size="13">
+    <text x="30" y="800">* Driver 1 clock: pin 16 on the HU-058 / HU-058SE. On the HU-058D (no RTC) it is pin 14 instead, and pins 12-14 carry no RTC.</text>
+    <text x="30" y="822">NPN = GPIO6 via 10K to NPN base, emitter GND, collector to socket 11. DS1302 VCC2 from 3V3.</text>
+    <text x="30" y="844">Do not fit R1 or R2 on the clock board: they pull the sensor nets to +5V. Fit the two 10K resistors shown instead.</text>
+    <text x="30" y="866">NTC: 100nF across it (socket pin 3 to GND). GPIO2 powers its divider only while reading. Never wire GPIO15 (PSRAM CS).</text>
+    <text x="30" y="888">Not connected: socket 7 (P5.5) and 15.</text>
+    <text x="30" y="910">Driver 1 = hour digits + AM + colon. Driver 2 = minute digits + dash + degree.</text>
+  </g>
+</svg>

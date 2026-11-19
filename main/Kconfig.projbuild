@@ -55,15 +55,32 @@ menu "ESP Clock Configuration"
         default 1
         help
             GPIO pin connected to the NTC voltage divider midpoint
-            (10K pull-up to VCC, NTC to GND). Must be an ADC-capable pin
+            (10K pull-up to 3V3, NTC to GND). Do not use the clock board's
+            R2, which pulls up to 5V; see docs/wiring.md. Must be an ADC-capable pin
             (GPIO1-GPIO6 on ESP32-C5).
+
+    config ESPCLOCK_PIN_NTC_POWER
+        int "NTC divider supply GPIO (-1 = pull-up on 3V3)"
+        default 2
+        help
+            GPIO feeding the NTC divider's 10K pull-up in place of 3V3. It is
+            driven high only while the temperature is read, so the thermistor
+            doesn't self-heat between readings. A 100nF capacitor across the
+            NTC filters LED switching noise; the firmware waits for it to
+            charge before sampling. Set -1 if the pull-up goes to 3V3.
+
+            GPIO2 is a boot strap, but only matters when GPIO28 (BOOT) is low,
+            so the divider pulling it low at reset is harmless. Never use
+            GPIO15: it is SPICS1, the PSRAM chip select on the flash bus, and
+            holding it low corrupts flash access.
 
     config ESPCLOCK_PIN_LDR_ADC
         int "LDR light sensor ADC GPIO"
         default 3
         help
             GPIO pin connected to the LDR voltage divider midpoint
-            (10K pull-up to VCC, LDR to GND). Must be an ADC-capable pin
+            (10K pull-up to 3V3, LDR to GND). Do not use the clock board's
+            R1, which pulls up to 5V; see docs/wiring.md. Must be an ADC-capable pin
             (GPIO1-GPIO6 on ESP32-C5). Avoid GPIO6 on the Waveshare kit
             (wired to the battery divider) and GPIO4/5 (on-board pull-ups).
 
@@ -72,5 +89,68 @@ menu "ESP Clock Configuration"
         default 27
         help
             GPIO pin driving the on-board addressable RGB status LED.
+
+    config ESPCLOCK_RTC
+        bool "DS1302 RTC fitted (HU-058 / HU-058SE)"
+        default y
+        help
+            The HU-058 and HU-058SE carry a DS1302 RTC with a CR1220 backup
+            cell on socket pins 12-14. When enabled, the display runs from
+            the RTC and NTP keeps it set, so the clock has the right time
+            straight after a power cut, even with no network. Disable for
+            the HU-058D, which has no RTC.
+
+    config ESPCLOCK_PIN_RTC_CE
+        int "DS1302 CE (RST) GPIO"
+        depends on ESPCLOCK_RTC
+        default 0
+        help
+            GPIO connected to socket pin 14 (DS1302 CE/RST).
+
+    config ESPCLOCK_PIN_RTC_SCLK
+        int "DS1302 SCLK GPIO"
+        depends on ESPCLOCK_RTC
+        default 4
+        help
+            GPIO connected to socket pin 12 (DS1302 SCLK).
+
+    config ESPCLOCK_PIN_RTC_IO
+        int "DS1302 I/O GPIO"
+        depends on ESPCLOCK_RTC
+        default 5
+        help
+            GPIO connected directly to socket pin 13 (DS1302 I/O). The DS1302
+            must be powered from 3V3, not the clock's +5V: it drives this
+            line to its own supply when the time is read.
+
+    config ESPCLOCK_BUZZER
+        bool "Buzzer fitted"
+        default y
+        help
+            Drive the board's buzzer (LS1 via Q1) for button beeps and the
+            hourly chime.
+
+    config ESPCLOCK_PIN_BUZZER
+        int "Buzzer GPIO"
+        depends on ESPCLOCK_BUZZER
+        default 6
+        help
+            GPIO driving an NPN (10K to its base, emitter to GND) whose
+            collector pulls socket pin 11 (R_B) low. Push-pull, high =
+            sound, idle low. Never connect the GPIO to R_B directly: Q1's
+            base sits at 5V. GPIO6 also feeds the kit's battery-voltage
+            divider, which is a harmless light load on an output and keeps
+            the NPN off before the firmware starts.
+
+    config ESPCLOCK_BUZZER_TEST
+        bool "Buzzer test tone (continuous)"
+        depends on ESPCLOCK_BUZZER
+        default n
+        help
+            Wiring check: sound the buzzer continuously at its normal pitch
+            (2.7 kHz square wave, 50% duty) while the clock otherwise runs
+            as usual. On a meter's DC range the buzzer GPIO then reads about
+            half of 3.3V, and U4 pin 11 somewhere between 0 and 5V. Turn off
+            again afterwards.
 
 endmenu
