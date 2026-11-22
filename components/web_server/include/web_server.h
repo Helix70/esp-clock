@@ -5,6 +5,10 @@
 #include "esp_err.h"
 #include "ota_server.h"
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
+
 /**
  * @file web_server.h
  * @brief Settings page and firmware upload on the home network.
@@ -30,5 +34,24 @@ esp_err_t web_server_start(const clock_settings_t *settings,
                            ota_server_status_cb_t ota_cb);
 
 void web_server_stop(void);
+
+/** What the clock is showing, for the live readout on the page. */
+typedef struct {
+    bool time_valid;      /* false until the RTC or NTP has the time */
+    time_t utc;           /* display time when captured */
+    int32_t usec;
+    int32_t utc_offset_s; /* local time minus UTC at that moment */
+    int64_t captured_us;  /* esp_timer_get_time() when captured */
+    float temp_c;         /* calibrated reading, NAN if the sensor fails */
+    const char *source;   /* "rtc", "ntp" or "none"; must be a literal */
+} web_server_status_t;
+
+/**
+ * @brief Publish the clock's current time and temperature. Call from the
+ *        task that owns the clock (clock_time is single-task) every few
+ *        hundred ms; GET /status serves the latest copy, advanced to the
+ *        moment of the request. Safe to call before web_server_start().
+ */
+void web_server_publish_status(const web_server_status_t *status);
 
 #endif
