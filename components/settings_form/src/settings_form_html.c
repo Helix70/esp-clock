@@ -42,6 +42,10 @@ static const char HTML_HEAD[] =
 "color:#000;border:none;border-radius:6px;font-size:1.1em;"
 "font-weight:bold;cursor:pointer}"
 "button:hover{background:#0cf}"
+".live{text-align:center;margin-bottom:8px}"
+".lt{font-size:2.6em;font-weight:bold;color:#fff;"
+"font-variant-numeric:tabular-nums}"
+".ltp{font-size:1.6em;color:#0ff;margin-top:6px}"
 "button.sm{width:auto;margin:4px 0 0 8px;padding:10px 14px;font-size:.9em}"
 "</style></head><body>"
 "<div class='card'>";
@@ -95,8 +99,40 @@ static const char SCRIPT_SETUP[] =
 "scan(0);"
 "</script></body></html>";
 
+/* Live time and temperature from GET /status. The time and UTC offset
+ * come from the clock, so the page shows what the display shows whatever
+ * the browser's own clock or timezone. */
+static const char HTML_LIVE[] =
+"<div class='live'><div class='lt' id='lt'>--:--:--</div>"
+"<div class='hint' id='ld'>Connecting...</div>"
+"<div class='ltp' id='ltp'>--</div></div>";
+
 /* Save in place, so the page stays put and says how it went. */
 static const char SCRIPT_NETWORK[] =
+"var B=null;"
+"function p2(n){return(n<10?'0':'')+n}"
+"function dr(){"
+"var t=document.getElementById('lt'),d=document.getElementById('ld'),"
+"p=document.getElementById('ltp');"
+"if(!B){t.textContent='--:--:--';d.textContent='Clock not responding';"
+"p.textContent='--';return;}"
+"if(!B.ok){t.textContent='--:--:--';d.textContent='Waiting for the time';}"
+"else{var x=new Date(B.ms+(performance.now()-B.at)+B.off*1000),"
+"h=x.getUTCHours(),ap='';"
+"if(!B.h24){ap=h<12?' AM':' PM';h=h%12||12;}"
+"t.textContent=(B.h24?p2(h):h)+':'+p2(x.getUTCMinutes())+':'+"
+"p2(x.getUTCSeconds())+ap;"
+"d.textContent=x.toLocaleDateString(undefined,{timeZone:'UTC',"
+"weekday:'long',day:'numeric',month:'long',year:'numeric'})+"
+"' \\u00B7 '+(B.src=='rtc'?'RTC':'NTP');}"
+"p.textContent=B.t==null?'Sensor error':"
+"(B.f?B.t*9/5+32:B.t).toFixed(1)+'\\u00B0'+(B.f?'F':'C');}"
+"function pl(){if(document.hidden)return;"
+"fetch('/status').then(function(r){return r.json()})"
+".then(function(s){s.at=performance.now();B=s;dr();})"
+".catch(function(){B=null;dr();});}"
+"pl();setInterval(pl,2000);setInterval(dr,250);"
+"document.addEventListener('visibilitychange',pl);"
 "function sv(f){"
 "var st=document.getElementById('sst');st.textContent='Saving...';"
 "fetch('/save',{method:'POST',body:new URLSearchParams(new FormData(f))})"
@@ -219,6 +255,7 @@ char *settings_form_page(const clock_settings_t *s, settings_form_mode_t mode,
 
     /* ~100 bytes per timezone option plus room for the form fields. */
     size_t size = sizeof(HTML_HEAD) + sizeof(HTML_WIFI) + sizeof(HTML_UPLOAD) +
+                  sizeof(HTML_LIVE) +
                   sizeof(SCRIPT_COMMON) + sizeof(SCRIPT_SETUP) +
                   sizeof(SCRIPT_NETWORK) + tz_count * 100 + 6144;
     char *buf = malloc(size);
@@ -229,6 +266,7 @@ char *settings_form_page(const clock_settings_t *s, settings_form_mode_t mode,
     append_str(buf, size, &pos, HTML_HEAD);
     append_str(buf, size, &pos, setup ? "<h1>ESP Clock Setup</h1>"
                                       : "<h1>ESP Clock</h1>");
+    if (!setup) append_str(buf, size, &pos, HTML_LIVE);
     append_str(buf, size, &pos,
                setup ? "<form method='POST' action='/save'>"
                      : "<form method='POST' action='/save' onsubmit='return sv(this)'>");

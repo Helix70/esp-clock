@@ -22,6 +22,10 @@ esp_err_t wifi_manager_init(void);
  * after any later drop, the connection keeps retrying in the background
  * with exponential backoff (1 s to 60 s) until wifi_manager_disconnect().
  *
+ * Every connect joins the strongest AP advertising @p ssid. While
+ * connected, the SSID is rescanned every 5 minutes; if another AP is at
+ * least 8 dB stronger, the link is dropped and reconnected to it.
+ *
  * @param ssid      SSID (null-terminated, max 32 bytes).
  * @param password  Password (null-terminated, max 64 bytes).
  * @param timeout_ms Maximum wait time in milliseconds; 0 starts connecting

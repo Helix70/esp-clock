@@ -199,6 +199,36 @@ static void set_brightness_level(float level) {
   hu058_set_brightness(&display, (uint8_t)step);
 }
 
+/* Local time minus UTC, in seconds (newlib's struct tm has no tm_gmtoff). */
+static int32_t utc_offset(time_t utc) {
+  struct tm lt;
+  localtime_r(&utc, &lt);
+  /* Days since the epoch for the local calendar date (days-from-civil). */
+  int y = lt.tm_year + 1900, m = lt.tm_mon + 1;
+  y -= m <= 2;
+  int era = (y >= 0 ? y : y - 399) / 400;
+  int yoe = y - era * 400;
+  int doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + lt.tm_mday - 1;
+  int doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  int64_t days = (int64_t)era * 146097 + doe - 719468;
+  int64_t local = days * 86400 + lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec;
+  return (int32_t)(local - (int64_t)utc);
+}
+
+/* Hand the web page what the display is showing. */
+static void publish_status(void) {
+  web_server_status_t st = {.temp_c = temperature_c, .source = "none"};
+  int usec;
+  st.time_valid = clock_time_now(&st.utc, &usec);
+  st.captured_us = esp_timer_get_time();
+  st.usec = usec;
+  if (st.time_valid) {
+    st.utc_offset_s = utc_offset(st.utc);
+    st.source = clock_time_source() == CLOCK_TIME_RTC ? "rtc" : "ntp";
+  }
+  web_server_publish_status(&st);
+}
+
 static void update_sensors(void) {
   temperature_c = clock_sensors_temperature_c();
   if (!isnan(temperature_c))
@@ -526,6 +556,7 @@ void app_main(void) {
     if (ms - last_sensor_ms >= SENSOR_PERIOD_MS) {
       last_sensor_ms = ms;
       update_sensors();
+      publish_status();
     }
 
 #if CONFIG_ESPCLOCK_BUZZER_TEST
