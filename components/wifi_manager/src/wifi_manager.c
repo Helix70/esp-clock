@@ -4,10 +4,12 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 static const char *TAG = "wifi_mgr";
@@ -25,6 +27,71 @@ static volatile bool s_connected;
 static volatile bool s_active; /* false after disconnect(): stop retrying */
 static uint32_t s_backoff_ms = BACKOFF_MIN_MS;
 
+/* Roaming: while connected, scan for the same SSID every ROAM_INTERVAL_MS.
+ * If another AP is at least ROAM_MARGIN_DB stronger than the current one,
+ * drop the link and reconnect; the connect-time all-channel scan sorted by
+ * signal then picks the strongest AP. The margin stops it flapping between
+ * two APs of similar strength. */
+#define ROAM_INTERVAL_MS (5 * 60 * 1000)
+#define ROAM_MARGIN_DB   8
+#define ROAM_SCAN_MAX    16
+
+static esp_timer_handle_t s_roam_timer;
+static char s_ssid[33];
+static volatile bool s_roam_scanning; /* our scan, not the portal's */
+static volatile bool s_roaming;       /* our own disconnect: reconnect now */
+
+static void roam_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_active || !s_connected || s_roam_scanning) return;
+    wifi_scan_config_t cfg = {
+        .ssid = (uint8_t *)s_ssid,
+        .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+    };
+    s_roam_scanning = true;
+    esp_err_t err = esp_wifi_scan_start(&cfg, false);
+    if (err != ESP_OK) {
+        s_roam_scanning = false;
+        ESP_LOGW(TAG, "Roam scan failed: %s", esp_err_to_name(err));
+    }
+}
+
+static void roam_scan_done(void)
+{
+    s_roam_scanning = false;
+    uint16_t n = ROAM_SCAN_MAX;
+    wifi_ap_record_t *recs = calloc(n, sizeof(*recs));
+    if (!recs) {
+        esp_wifi_clear_ap_list();
+        return;
+    }
+    if (esp_wifi_scan_get_ap_records(&n, recs) != ESP_OK) n = 0;
+
+    wifi_ap_record_t cur;
+    if (n > 0 && s_active && s_connected &&
+        esp_wifi_sta_get_ap_info(&cur) == ESP_OK) {
+        const wifi_ap_record_t *best = NULL;
+        for (uint16_t i = 0; i < n; i++) {
+            if (memcmp(recs[i].bssid, cur.bssid, 6) == 0) continue;
+            if (strcmp((char *)recs[i].ssid, s_ssid) != 0) continue;
+            if (!best || recs[i].rssi > best->rssi) best = &recs[i];
+        }
+        if (best && best->rssi >= cur.rssi + ROAM_MARGIN_DB) {
+            ESP_LOGI(TAG, "Roaming: current AP " MACSTR " %d dBm (ch %d), "
+                     "better AP " MACSTR " %d dBm (ch %d)",
+                     MAC2STR(cur.bssid), cur.rssi, cur.primary,
+                     MAC2STR(best->bssid), best->rssi, best->primary);
+            s_roaming = true;
+            esp_wifi_disconnect();
+        } else {
+            ESP_LOGD(TAG, "Roam check: staying on " MACSTR " %d dBm",
+                     MAC2STR(cur.bssid), cur.rssi);
+        }
+    }
+    free(recs);
+}
+
 static void retry_cb(void *arg)
 {
     (void)arg;
@@ -38,7 +105,9 @@ static void on_wifi_event(void *arg, esp_event_base_t base,
                           int32_t id, void *data)
 {
     if (base == WIFI_EVENT) {
-        if (id == WIFI_EVENT_STA_START) {
+        if (id == WIFI_EVENT_SCAN_DONE) {
+            if (s_roam_scanning) roam_scan_done();
+        } else if (id == WIFI_EVENT_STA_START) {
             /* Not after disconnect(): the portal restarts WiFi in APSTA
              * mode and must not have the STA chasing the old network. */
             if (s_active) esp_wifi_connect();
@@ -47,6 +116,16 @@ static void on_wifi_event(void *arg, esp_event_base_t base,
             s_connected = false;
             xEventGroupClearBits(s_event_group, CONNECTED_BIT);
             if (!s_active) return;
+
+            if (s_roaming) {
+                /* Deliberate drop to move to a stronger AP: reconnect
+                 * straight away rather than waiting out a backoff. */
+                s_roaming = false;
+                s_backoff_ms = BACKOFF_MIN_MS;
+                esp_timer_stop(s_retry_timer);
+                esp_wifi_connect();
+                return;
+            }
 
             if (was_connected) s_backoff_ms = BACKOFF_MIN_MS;
             wifi_event_sta_disconnected_t *ev = data;
@@ -76,6 +155,12 @@ esp_err_t wifi_manager_init(void)
     };
     ESP_ERROR_CHECK(esp_timer_create(&targs, &s_retry_timer));
 
+    const esp_timer_create_args_t rargs = {
+        .callback = roam_timer_cb,
+        .name = "wifi_roam",
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&rargs, &s_roam_timer));
+
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -97,6 +182,7 @@ esp_err_t wifi_manager_connect(const char *ssid, const char *pass,
     s_active = true;
     s_backoff_ms = BACKOFF_MIN_MS;
     xEventGroupClearBits(s_event_group, CONNECTED_BIT);
+    strncpy(s_ssid, ssid, sizeof(s_ssid) - 1);
 
     wifi_config_t sta_cfg = {0};
     strncpy((char *)sta_cfg.sta.ssid, ssid,
@@ -115,6 +201,8 @@ esp_err_t wifi_manager_connect(const char *ssid, const char *pass,
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
+    esp_timer_stop(s_roam_timer);
+    esp_timer_start_periodic(s_roam_timer, (uint64_t)ROAM_INTERVAL_MS * 1000);
 
     ESP_LOGI(TAG, "Connecting to '%s'...", ssid);
 
@@ -134,6 +222,9 @@ void wifi_manager_disconnect(void)
 {
     s_active = false;
     esp_timer_stop(s_retry_timer);
+    esp_timer_stop(s_roam_timer);
+    s_roaming = false;
+    s_roam_scanning = false;
     esp_wifi_disconnect();
     esp_wifi_stop();
     s_connected = false;
