@@ -106,6 +106,12 @@ esp_err_t wifi_manager_connect(const char *ssid, const char *pass,
     /* An empty password means an open network. */
     sta_cfg.sta.threshold.authmode =
         pass[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    /* With several APs on the same SSID (mesh, extenders, 2.4 + 5 GHz),
+     * scan every channel and join the strongest one instead of the first
+     * one found. This applies to every connect, including the retries
+     * after a disconnect. */
+    sta_cfg.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    sta_cfg.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
