@@ -105,7 +105,8 @@ static const char SCRIPT_SETUP[] =
 static const char HTML_LIVE[] =
 "<div class='live'><div class='lt' id='lt'>--:--:--</div>"
 "<div class='hint' id='ld'>Connecting...</div>"
-"<div class='ltp' id='ltp'>--</div></div>";
+"<div class='ltp' id='ltp'>--</div>"
+"<div class='hint' id='adc'></div></div>";
 
 /* Save in place, so the page stays put and says how it went. */
 static const char SCRIPT_NETWORK[] =
@@ -126,7 +127,14 @@ static const char SCRIPT_NETWORK[] =
 "weekday:'long',day:'numeric',month:'long',year:'numeric'})+"
 "' \\u00B7 '+(B.src=='rtc'?'RTC':'NTP');}"
 "p.textContent=B.t==null?'Sensor error':"
-"(B.f?B.t*9/5+32:B.t).toFixed(1)+'\\u00B0'+(B.f?'F':'C');}"
+"(B.f?B.t*9/5+32:B.t).toFixed(1)+'\\u00B0'+(B.f?'F':'C');"
+"var a=B.adc,e=document.getElementById('adc');"
+"function ch(n,r,m){return n+' raw '+(r==null?'fail':r)+"
+"(m==null?'':' ('+m+' mV)')}"
+"e.textContent=a?ch('NTC',a.nr,a.nm)+' \\u00B7 '+ch('LDR',a.lr,a.lm)+"
+"' \\u00B7 LDR '+(a.lo==null?'out of range':(a.lo/1000).toFixed(1)+"
+"' k\\u03A9')+' \\u00B7 light '+(a.lf==null?'--':Math.round(a.lf*100)+'%')+"
+"' \\u00B7 level '+a.lv:'';}"
 "function pl(){if(document.hidden)return;"
 "fetch('/status').then(function(r){return r.json()})"
 ".then(function(s){s.at=performance.now();B=s;dr();})"

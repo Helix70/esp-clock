@@ -21,7 +21,24 @@ static web_server_settings_cb_t s_settings_cb;
 static bool s_ota_enabled;
 
 static portMUX_TYPE s_status_lock = portMUX_INITIALIZER_UNLOCKED;
-static web_server_status_t s_status = {.temp_c = NAN, .source = "none"};
+static web_server_status_t s_status = {
+    .temp_c = NAN, .source = "none",
+    .ntc_raw = -1, .ntc_mv = -1, .ldr_raw = -1, .ldr_mv = -1,
+    .ldr_ohms = NAN, .light = NAN,
+};
+
+/* JSON number, or null for a NAN float / negative int. */
+static void fmt_float(char *buf, size_t size, float v, int decimals)
+{
+    if (isnan(v)) snprintf(buf, size, "null");
+    else snprintf(buf, size, "%.*f", decimals, (double)v);
+}
+
+static void fmt_int(char *buf, size_t size, int v)
+{
+    if (v < 0) snprintf(buf, size, "null");
+    else snprintf(buf, size, "%d", v);
+}
 
 void web_server_publish_status(const web_server_status_t *status)
 {
@@ -31,7 +48,9 @@ void web_server_publish_status(const web_server_status_t *status)
 }
 
 /* GET /status: {"ok":bool,"ms":UTC ms,"off":offset s,"src":"rtc",
- * "t":Celsius or null,"f":fahrenheit,"h24":24-hour}. The page ticks the
+ * "t":Celsius or null,"f":fahrenheit,"h24":24-hour,
+ * "adc":{"nr","nm","lr","lm","lo","lf","lv"}}: NTC and LDR raw code and mV,
+ * LDR ohms, light fraction and brightness level, null when unavailable. The page ticks the
  * seconds itself and re-fetches every few seconds. */
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
@@ -47,19 +66,24 @@ static esp_err_t status_get_handler(httpd_req_t *req)
 
     int64_t ms = (int64_t)st.utc * 1000 + st.usec / 1000 +
                  (esp_timer_get_time() - st.captured_us) / 1000;
-    char temp[16];
-    if (isnan(st.temp_c))
-        strcpy(temp, "null");
-    else
-        snprintf(temp, sizeof(temp), "%.2f", (double)st.temp_c);
+    char temp[16], nr[12], nm[12], lr[12], lm[12], lo[16], lf[16];
+    fmt_float(temp, sizeof(temp), st.temp_c, 2);
+    fmt_int(nr, sizeof(nr), st.ntc_raw);
+    fmt_int(nm, sizeof(nm), st.ntc_mv);
+    fmt_int(lr, sizeof(lr), st.ldr_raw);
+    fmt_int(lm, sizeof(lm), st.ldr_mv);
+    fmt_float(lo, sizeof(lo), st.ldr_ohms, 0);
+    fmt_float(lf, sizeof(lf), st.light, 3);
 
-    char json[160];
+    char json[320];
     snprintf(json, sizeof(json),
              "{\"ok\":%s,\"ms\":%lld,\"off\":%ld,\"src\":\"%s\",\"t\":%s,"
-             "\"f\":%s,\"h24\":%s}",
+             "\"f\":%s,\"h24\":%s,\"adc\":{\"nr\":%s,\"nm\":%s,\"lr\":%s,"
+             "\"lm\":%s,\"lo\":%s,\"lf\":%s,\"lv\":%d}}",
              st.time_valid ? "true" : "false", (long long)ms,
              (long)st.utc_offset_s, st.source, temp,
-             fahrenheit ? "true" : "false", h24 ? "true" : "false");
+             fahrenheit ? "true" : "false", h24 ? "true" : "false",
+             nr, nm, lr, lm, lo, lf, st.level);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     return httpd_resp_sendstr(req, json);

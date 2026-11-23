@@ -44,6 +44,14 @@ typedef struct {
     int64_t captured_us;  /* esp_timer_get_time() when captured */
     float temp_c;         /* calibrated reading, NAN if the sensor fails */
     const char *source;   /* "rtc", "ntp" or "none"; must be a literal */
+    /* Sensor debug: averaged ADC codes (-1 = failed) and calibrated mV
+     * (-1 = uncalibrated), LDR ohms (NAN if pinned at a rail), smoothed
+     * light fraction (NAN until first reading), brightness level applied. */
+    int ntc_raw, ntc_mv;
+    int ldr_raw, ldr_mv;
+    float ldr_ohms;
+    float light;
+    int level;
 } web_server_status_t;
 
 /**

@@ -71,6 +71,8 @@ static volatile bool ota_active = false;
 static float light_fraction = NAN; /* smoothed, 0 = dark, 1 = bright */
 static float auto_level = NAN;     /* brightness level last applied */
 static float temperature_c = NAN;
+static float ldr_ohms = NAN;  /* last LDR reading, for the web page */
+static int applied_level;     /* brightness level last sent to the display */
 
 /*
  * Display scan runs on its own GPTimer rather than esp_timer. With an
@@ -193,7 +195,8 @@ static void apply_colors(uint32_t ms) {
 /* Levels 1..16 map one-to-one onto the driver's 16 current steps, so every
  * level is a visible change. */
 static void set_brightness_level(float level) {
-  long step = lroundf(level) - 1;
+  applied_level = (int)lroundf(level);
+  long step = applied_level - 1;
   if (step < 0) step = 0;
   if (step > HU058_CURRENT_MAX) step = HU058_CURRENT_MAX;
   hu058_set_brightness(&display, (uint8_t)step);
@@ -218,6 +221,15 @@ static int32_t utc_offset(time_t utc) {
 /* Hand the web page what the display is showing. */
 static void publish_status(void) {
   web_server_status_t st = {.temp_c = temperature_c, .source = "none"};
+  clock_sensors_adc_t ntc, ldr;
+  clock_sensors_last_adc(&ntc, &ldr);
+  st.ntc_raw = ntc.raw;
+  st.ntc_mv = ntc.mv;
+  st.ldr_raw = ldr.raw;
+  st.ldr_mv = ldr.mv;
+  st.ldr_ohms = ldr_ohms;
+  st.light = light_fraction;
+  st.level = applied_level;
   int usec;
   st.time_valid = clock_time_now(&st.utc, &usec);
   st.captured_us = esp_timer_get_time();
@@ -235,6 +247,7 @@ static void update_sensors(void) {
     temperature_c += (float)settings.temp_offset_tenths / 10.0f;
 
   float ohms = clock_sensors_ldr_ohms();
+  ldr_ohms = ohms;
   if (isnan(ohms))
     return;
 

@@ -33,6 +33,8 @@ static adc_cali_handle_t s_cali;
 static adc_channel_t s_ntc_channel;
 static adc_channel_t s_ldr_channel;
 static int s_ntc_power_gpio = -1;
+static clock_sensors_adc_t s_ntc_last = {-1, -1};
+static clock_sensors_adc_t s_ldr_last = {-1, -1};
 
 static void cali_init(adc_unit_t unit)
 {
@@ -98,32 +100,37 @@ esp_err_t clock_sensors_init(int ntc_gpio, int ldr_gpio, int ntc_power_gpio)
     return ESP_OK;
 }
 
-/* Averaged divider ratio (sensor voltage / supply), NAN on read failure. */
-static float read_ratio(adc_channel_t ch)
+/* Averaged divider ratio (sensor voltage / supply), NAN on read failure.
+ * Records the averaged raw code and millivolts in *last. */
+static float read_ratio(adc_channel_t ch, clock_sensors_adc_t *last)
 {
-    int sum = 0, n = 0;
+    int raw_sum = 0, mv_sum = 0, n = 0;
     for (int i = 0; i < SAMPLES; i++) {
         int raw;
         if (adc_oneshot_read(s_adc, ch, &raw) != ESP_OK) continue;
         if (s_cali) {
             int mv;
             if (adc_cali_raw_to_voltage(s_cali, raw, &mv) != ESP_OK) continue;
-            sum += mv;
-        } else {
-            sum += raw;
+            mv_sum += mv;
         }
+        raw_sum += raw;
         n++;
     }
-    if (n == 0) return NAN;
+    if (n == 0) {
+        last->raw = -1;
+        last->mv = -1;
+        return NAN;
+    }
 
-    float avg = (float)sum / n;
-    return s_cali ? avg / SUPPLY_MV : avg / 4095.0f;
+    last->raw = (raw_sum + n / 2) / n;
+    last->mv = s_cali ? (mv_sum + n / 2) / n : -1;
+    return s_cali ? (float)mv_sum / n / SUPPLY_MV : (float)raw_sum / n / 4095.0f;
 }
 
 /* Bottom resistor of the divider, NAN if the reading is pinned at a rail. */
-static float divider_ohms(adc_channel_t ch)
+static float divider_ohms(adc_channel_t ch, clock_sensors_adc_t *last)
 {
-    float r = read_ratio(ch);
+    float r = read_ratio(ch, last);
     if (isnan(r) || r < 0.01f || r > 0.99f) return NAN;
     return R_PULLUP * r / (1.0f - r);
 }
@@ -134,10 +141,10 @@ float clock_sensors_temperature_c(void)
     if (s_ntc_power_gpio >= 0) {
         gpio_set_level(s_ntc_power_gpio, 1);
         esp_rom_delay_us(NTC_SETTLE_US);
-        r_ntc = divider_ohms(s_ntc_channel);
+        r_ntc = divider_ohms(s_ntc_channel, &s_ntc_last);
         gpio_set_level(s_ntc_power_gpio, 0);
     } else {
-        r_ntc = divider_ohms(s_ntc_channel);
+        r_ntc = divider_ohms(s_ntc_channel, &s_ntc_last);
     }
     if (isnan(r_ntc)) return NAN;
 
@@ -147,5 +154,11 @@ float clock_sensors_temperature_c(void)
 
 float clock_sensors_ldr_ohms(void)
 {
-    return divider_ohms(s_ldr_channel);
+    return divider_ohms(s_ldr_channel, &s_ldr_last);
+}
+
+void clock_sensors_last_adc(clock_sensors_adc_t *ntc, clock_sensors_adc_t *ldr)
+{
+    if (ntc) *ntc = s_ntc_last;
+    if (ldr) *ldr = s_ldr_last;
 }
