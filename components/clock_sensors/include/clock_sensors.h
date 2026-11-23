@@ -34,4 +34,17 @@ float clock_sensors_temperature_c(void);
  */
 float clock_sensors_ldr_ohms(void);
 
+/** One channel's most recent averaged reading, for debugging. */
+typedef struct {
+    int raw; /* averaged ADC code (0..4095), -1 if never read or read failed */
+    int mv;  /* averaged calibrated millivolts, -1 without calibration */
+} clock_sensors_adc_t;
+
+/**
+ * @brief The averaged ADC readings behind the last temperature and LDR
+ *        calls. Either pointer may be NULL. Not thread-safe: call from the
+ *        task that reads the sensors.
+ */
+void clock_sensors_last_adc(clock_sensors_adc_t *ntc, clock_sensors_adc_t *ldr);
+
 #endif
